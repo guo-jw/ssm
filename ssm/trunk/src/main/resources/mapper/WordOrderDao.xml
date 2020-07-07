@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 设置为WorkOrderDao接口方法提供sql语句配置 -->
+<mapper namespace="com.ssm.dao.WorkOrderDao">
+    <resultMap type="com.ssm.model.Order" id="orderMap">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="orderNum" column="order_num"/>
+        <result property="applicantId" column="applicant_id"/>
+        <result property="title" column="title"/>
+        <result property="detail" column="detail"/>
+        <result property="classA" column="class_a"/>
+        <result property="classB" column="class_b"/>
+        <result property="source" column="source"/>
+        <result property="content" column="content"/>
+        <result property="isLive" column="is_live"/>
+        <result property="handleId" column="handle_id"/>
+        <result property="handleResult" column="handle_result"/>
+        <result property="status" column="status"/>
+        <result property="endTime" column="end_time"/>
+        <result property="startTime" column="start_time"/>
+        <result property="status2" column="status2"/>
+        <result property="userId" column="user_id"/>
+        <result property="codeNum" column="code_num"/>
+        <result property="phoneNum" column="phone_num"/>
+        <result property="departmentName" column="department_name"/>
+        <result property="company" column="company"/>
+        <result property="applicantName" column="applicant_name"/>
+    </resultMap>
+
+    <resultMap id="consult" type="com.ssm.model.Consult">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="consultLevel" column="consult_level"/>
+        <result property="parentId" column="parent_id"/>
+    </resultMap>
+
+    <resultMap id="applicant" type="com.ssm.model.Applicant">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="codeNum" column="code_num"/>
+        <result property="phoneNum" column="phone_num"/>
+        <result property="departmentId" column="department_id"/>
+        <result property="company" column="company"/>
+    </resultMap>
+
+
+    <!--统计工单数量-->
+    <select id="selectOrderTotalNumA" resultType="totalOrder">
+
+        SELECT c.id id, c.name className, COUNT(*) number  FROM `order` o, `consult` c WHERE o.class_a = c.id
+
+            <if test="order.startTime!=null">
+                AND o.start_time &gt;= #{order.startTime}
+            </if>
+            <if test="order.endTime!=null">
+                AND o.start_time &lt; #{order.endTime}
+            </if>
+        GROUP BY class_a
+
+        ORDER by c.id
+
+    </select>
+
+    <select id="selectOrderTotalNumB" resultType="totalOrder">
+
+        SELECT c.parent_id id, c.name className, COUNT(*) number FROM `order` o, `consult` c WHERE o.class_b = c.id
+
+        <if test="order.startTime!=null">
+            AND o.start_time &gt;= #{order.startTime}
+        </if>
+        <if test="order.endTime!=null">
+            AND o.start_time &lt; #{order.endTime}
+        </if>
+        GROUP BY class_b
+
+        ORDER by c.id
+
+    </select>
+
+
+    <!-- 批量关闭工单 -->
+    <update id="closeAll">
+        update `order`
+        set status = 1,end_time=#{endTime},handle_id=#{handleId}
+        where
+        <foreach collection="list" index="index" item="item" open="(" close=")" separator="or">
+            id=#{item}
+        </foreach>
+    </update>
+
+    <!-- 跳转到修改页面(根据主键查询详细信息) -->
+    <select id="selectById" resultMap="orderMap" parameterType="int">
+        select * from `order` where id = #{id}
+    </select>
+
+    <!-- 查询申请人信息 -->
+    <select id="selectApplicant" resultMap="applicant">
+        select
+          id,name,code_num,phone_num,department_id,company
+          from applicant where `level` = 0
+    </select>
+    <!-- 根据电话模糊查询申请人信息 -->
+    <select id="selectApplicantByP" parameterType="String" resultMap="applicant">
+        select
+          id,name,code_num,phone_num,department_id,company
+          from applicant where `level` = 0
+        <if test="phoneNum!=null and phoneNum != ''">
+            and phone_num like CONCAT('%',#{phoneNum},'%')
+        </if>
+    </select>
+    <!-- 查询现场处理人信息 -->
+    <select id="selectApplicantL" resultMap="applicant">
+        select
+          id,name
+          from applicant where `level` = 1
+    </select>
+    <!-- 根据id查询申请人信息 -->
+    <select id="selectApplicantById" parameterType="int" resultMap="applicant">
+        select
+        id,name,code_num,phone_num,department_id,company
+        from applicant where
+            id=#{id}
+    </select>
+
+    <!-- 根据id查询咨询分类 -->
+    <select id="selectClassById" parameterType="int" resultMap="consult">
+        select
+          id,name
+          from consult
+        where status = 1 and id = #{id};
+    </select>
+    <!-- 查询咨询一级分类 -->
+    <select id="selectClassA" resultMap="consult">
+        select
+          id,name,consult_level,parent_id
+          from consult
+        where status = 1 and parent_id = 0;
+    </select>
+    <!-- 查询咨询二级分类 -->
+    <select id="selectClassB" parameterType="String" resultMap="consult">
+        select
+          id,name,consult_level,parent_id
+          from consult
+        where status = 1 and parent_id = #{parentId};
+    </select>
+    <!-- 查询工单 -->
+    <select id="selectOrderByUser" resultMap="orderMap">
+
+        select * from `order`
+        <where>
+            <if test="order.classA!=null and order.classA != ''">
+                class_a = #{order.classA}
+            </if>
+            <if test="order.classB!=null and order.classB != ''">
+                AND class_b = #{order.classB}
+            </if>
+            <if test="order.source!=null and order.source != ''">
+                AND order.source = #{order.source}
+            </if>
+            <if test="order.status!=null">
+                AND status = #{order.status}
+            </if>
+
+            <if test="order.title!=null and order.title != ''">
+                AND title like CONCAT('%',#{order.title},'%')
+            </if>
+            <if test="order.detail!=null and order.detail != ''">
+                AND detail like CONCAT('%',#{order.detail},'%')
+            </if>
+            <if test="order.handleId!=null and order.handleId != ''">
+                AND handle_id = #{order.handleId}
+            </if>
+            <if test="order.userId!=null">
+                AND user_id = #{order.userId}
+            </if>
+            <if test="order.isLive!=null">
+                AND is_live = #{order.isLive}
+            </if>
+            <if test="order.startTime!=null">
+                AND start_time &gt;= #{order.startTime}
+            </if>
+            <if test="order.endTime!=null">
+                AND start_time &lt; #{order.endTime}
+            </if>
+             <if test="order.phoneNum!=null and order.phoneNum != ''">
+                AND phone_num like CONCAT('%',#{order.phoneNum},'%')
+            </if>
+            <!--<if test="userIds!=null">
+                AND applicant_id in
+                <foreach collection="userIds" item="applicantId" separator="," open="(" close=")">
+                     #{applicantId}
+                </foreach>
+            </if>-->
+        </where>
+
+        ORDER by id desc
+        <if test="start!=null and size!=null">
+            limit #{start},#{size}
+        </if>
+
+    </select>
+
+    <!-- 查询记录总数 -->
+    <select id="selectCount" resultType="int">
+		select count(*) from `order`
+        <where>
+            <if test="order.classA!=null and order.classA != ''">
+                class_a = #{order.classA}
+            </if>
+            <if test="order.classB!=null and order.classB != ''">
+                AND class_b = #{order.classB}
+            </if>
+            <if test="order.source!=null and order.source != ''">
+                AND order.source = #{order.source}
+            </if>
+            <if test="order.status!=null">
+                AND status = #{order.status}
+            </if>
+
+            <if test="order.title!=null and order.title != ''">
+                AND title like CONCAT('%',#{order.title},'%')
+            </if>
+            <if test="order.detail!=null and order.detail != ''">
+                AND detail like CONCAT('%',#{order.detail},'%')
+            </if>
+            <if test="order.handleId!=null and order.handleId != ''">
+                AND handle_id = #{order.handleId}
+            </if>
+            <if test="order.userId!=null">
+                AND user_id = #{order.userId}
+            </if>
+            <if test="order.isLive!=null">
+                AND is_live = #{order.isLive}
+            </if>
+            <if test="order.startTime!=null">
+                AND start_time &gt;= #{order.startTime}
+            </if>
+            <if test="order.endTime!=null">
+                AND start_time &lt; #{order.endTime}
+            </if>
+            <if test="order.phoneNum!=null and order.phoneNum != ''">
+                AND phone_num like CONCAT('%',#{order.phoneNum},'%')
+            </if>
+
+        </where>
+	</select>
+
+    <!-- 新增工单 -->
+    <insert id="add" parameterType="order">
+        insert into `order`
+              (`name`,order_num,applicant_id,title,detail,class_a,class_b,source,
+              content,is_live,handle_id,handle_result,`status`,end_time,start_time,
+              status2,user_id,code_num,phone_num,department_name,company,applicant_name)
+        values
+              (#{name},#{orderNum},#{applicantId},#{title},#{detail},#{classA},
+              #{classB},#{source},#{content},#{isLive},#{handleId},#{handleResult},#{status},
+              #{endTime},#{startTime},0,#{userId},#{codeNum},#{phoneNum},#{departmentName},#{company},#{applicantName})
+    </insert>
+
+    <!-- 修改工单 -->
+    <update id="update" parameterType="order" >
+        update `order`
+        <set>
+            <if test="name!=null and name!=''">
+                 `name` = #{name},
+            </if>
+            <if test="orderNum!=null and orderNum!=''">
+                order_num = #{orderNum},
+            </if>
+            <if test="applicantId!=null">
+                applicant_id = #{applicantId},
+            </if>
+            <if test="title!=null">
+                 title = #{title},
+            </if>
+            <if test="detail!=null and detail!=''">
+                 detail = #{detail},
+            </if>
+            <if test="classA!=null">
+                class_a = #{classA},
+            </if>
+            <if test="classB!=null">
+                class_b = #{classB},
+            </if>
+            <if test="source!=null and source!=''">
+                 source = #{source},
+            </if>
+            <if test="content!=null and content!=''">
+                 content = #{content},
+            </if>
+            <if test="isLive!=null">
+                is_live= #{isLive},
+            </if>
+            <if test="handleId!=null">
+                handle_id = #{handleId},
+            </if>
+            <if test="handleResult!=null and handleResult!=''">
+                handle_result = #{handleResult},
+            </if>
+            <if test="status!=null">
+                 `status` = #{status},
+            </if>
+            <if test="endTime!=null">
+                 end_time = #{endTime},
+            </if>
+            <if test="startTime!=null">
+                 start_time = #{startTime},
+            </if>
+            <if test="status2!=null">
+                 status2 = #{status2},
+            </if>
+            <if test="codeNum!=null and codeNum!=''">
+                code_num = #{codeNum},
+            </if>
+            <if test="phoneNum!=null and phoneNum!=''">
+                phone_num = #{phoneNum},
+            </if>
+            <if test="departmentName!=null and departmentName!=''">
+                department_name = #{departmentName},
+            </if>
+            <if test="company!=null and company!=''">
+                company = #{company},
+            </if>
+            <if test="applicantName!=null and applicantName!=''">
+                applicant_name = #{applicantName}
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 删除工单 -->
+    <delete id="delete" parameterType="order">
+
+        delete from `order` where id = #{id}
+
+    </delete>
+
+</mapper>

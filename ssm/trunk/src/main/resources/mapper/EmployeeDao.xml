@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 设置为WorkOrderDao接口方法提供sql语句配置 -->
+<mapper namespace="com.ssm.dao.EmployeeDao">
+
+    <resultMap id="applicant" type="com.ssm.model.Applicant">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="codeNum" column="code_num"/>
+        <result property="phoneNum" column="phone_num"/>
+        <result property="departmentId" column="department_id"/>
+        <result property="company" column="company"/>
+    </resultMap>
+
+    <resultMap id="dept" type="com.ssm.model.Dept">
+        <id property="id" column="id"/>
+        <result property="deptName" column="deptname"/>
+    </resultMap>
+
+    <!-- 修改员工信息 -->
+    <update id="update" parameterType="applicant" >
+        update applicant
+        <set>
+            <if test="name!=null and name!=''">
+                name = #{name},
+            </if>
+            <if test="codeNum!=null and codeNum !=''">
+                code_num = #{codeNum},
+            </if>
+            <if test="phoneNum!=null and phoneNum!=''">
+                phone_num = #{phoneNum},
+            </if>
+            <if test="departmentId!=null">
+                department_id = #{departmentId},
+            </if>
+            <if test="company!=null and company!=''">
+                company = #{company},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 查询部门信息 -->
+    <select id="selectDept" resultMap="dept">
+        select id,deptname from dept
+    </select>
+
+
+    <!-- 新增员工 -->
+    <insert id="add" parameterType="applicant">
+        insert into `applicant`
+              (`name`,code_num,phone_num,department_id,company,level)
+        values
+              (#{name},#{codeNum},#{phoneNum},#{departmentId},#{company},0)
+    </insert>
+
+
+
+    <!-- 删除工单 -->
+    <delete id="delete" parameterType="int">
+
+        delete from applicant where id = #{id}
+
+    </delete>
+
+    <!-- 查询申请人信息 -->
+    <select id="selectApplicant" resultMap="applicant">
+        select
+          id,name,code_num,phone_num,department_id,company
+          from applicant where `level` = 0
+        <if test="applicant.name!=null and applicant.name!=''">
+            and name like CONCAT('%',#{applicant.name},'%')
+        </if>
+        <if test="applicant.departmentId!=null and applicant.departmentId!=''">
+            and department_id = #{applicant.departmentId}
+        </if>
+        ORDER BY id DESC
+        <if test="start!=null and size!=null">
+            limit #{start},#{size}
+        </if>
+    </select>
+
+    <!-- 查询记录总数 -->
+    <select id="selectCount" resultType="int">
+        select count(*) from applicant
+        where `level` = 0
+        <if test="name!=null and name!=''">
+            and name like CONCAT('%',#{name},'%')
+        </if>
+        <if test="departmentId!=null and departmentId!=''">
+            and department_id = #{departmentId}
+        </if>
+
+    </select>
+
+    <!-- 根据id查询申请人信息 -->
+    <select id="selectApplicantById" parameterType="int" resultMap="applicant">
+        select
+        id,name,code_num,phone_num,department_id,company
+        from applicant where
+            id=#{id}
+    </select>
+
+
+
+
+</mapper>
